@@ -18,57 +18,6 @@ export default function GlobeView() {
     bearing: 0
   });
 
-  const mapStyle = {
-    version: 8 as const,
-    sources: {
-      'raster-tiles': {
-        type: 'raster' as const,
-        tiles: [
-          'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-        ],
-        tileSize: 256,
-        attribution: 'Map tiles by Esri'
-      },
-      'reference-tiles': {
-        type: 'raster' as const,
-        tiles: [
-          'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'
-        ],
-        tileSize: 256
-      },
-      'transportation-tiles': {
-        type: 'raster' as const,
-        tiles: [
-          'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}'
-        ],
-        tileSize: 256
-      }
-    },
-    layers: [
-      {
-        id: 'simple-tiles',
-        type: 'raster' as const,
-        source: 'raster-tiles',
-        minzoom: 0,
-        maxzoom: 22
-      },
-      {
-        id: 'transportation-layer',
-        type: 'raster' as const,
-        source: 'transportation-tiles',
-        minzoom: 0,
-        maxzoom: 22
-      },
-      {
-        id: 'reference-layer',
-        type: 'raster' as const,
-        source: 'reference-tiles',
-        minzoom: 0,
-        maxzoom: 22
-      }
-    ]
-  };
-
   const trajectoryGeoJson = useMemo(() => {
     const features = trajectories.map((t: any) => {
        const start = [t.startLng, t.startLat];
@@ -96,6 +45,8 @@ export default function GlobeView() {
     map.setProjection({ type: 'globe' });
   };
 
+  const mapStyleUrl = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+
   return (
     <div className="w-full h-full bg-[#050507] relative">
       <DeckGL
@@ -105,7 +56,7 @@ export default function GlobeView() {
         onViewStateChange={(e) => setViewState(e.viewState)}
       >
         <Map
-          mapStyle={mapStyle}
+          mapStyle={mapStyleUrl}
           onLoad={onMapLoad}
           reuseMaps
         >
