@@ -14,8 +14,9 @@ export interface CaseData {
   sourceUrl?: string;
   sourceType?: SourceType;
   confidenceLevel?: ConfidenceLevel;
+  entity?: 'human' | 'rodent' | 'vector';
   isHighRisk?: boolean;
-  type?: 'historic' | 'current' | 'passenger' | 'osint';
+  type?: 'historic' | 'current' | 'passenger' | 'osint' | 'rat';
 }
 
 export interface NewsFeedItem {

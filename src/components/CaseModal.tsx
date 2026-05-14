@@ -48,8 +48,17 @@ export default function CaseModal() {
             <span className="text-[#808080]">{new Date(selectedCase.date).toLocaleDateString()}</span>
           </div>
 
-          <div className="text-[11px] text-[#e0e0e0] leading-relaxed mb-6">
+          <div className="text-[11px] text-[#e0e0e0] leading-relaxed mb-4">
             <p>{selectedCase.description}</p>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {selectedCase.sourceType && (
+              <span className="text-[9px] uppercase tracking-widest bg-[#111111] border border-[#2d2d30] px-2 py-1 rounded-full text-[#7dc7ff]">{selectedCase.sourceType}</span>
+            )}
+            {selectedCase.confidenceLevel && (
+              <span className="text-[9px] uppercase tracking-widest bg-[#111111] border border-[#2d2d30] px-2 py-1 rounded-full text-[#ffd166]">Confidence: {selectedCase.confidenceLevel}</span>
+            )}
           </div>
 
           <div className="mt-6 flex flex-col gap-2">
@@ -66,13 +75,18 @@ export default function CaseModal() {
               )}
               <div>
                 <div className="font-bold uppercase tracking-wider text-white">
-                  {isPlaying ? "GENERATING BRIEFING..." : "Play Audio Briefing"}
+                  {isPlaying ? 'GENERATING BRIEFING...' : 'Play Audio Briefing'}
                 </div>
                 <div className="text-[9px] text-[#808080]">Listen to detailed case summary playback</div>
               </div>
             </button>
 
-            <button className="flex items-center justify-between w-full p-3 bg-[#1a1a1f] hover:bg-[#25252a] border border-[#2d2d30] rounded-sm transition-colors text-left text-[11px] text-[#e0e0e0] group">
+            <a
+              href={selectedCase.sourceUrl || '#'}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between w-full p-3 bg-[#1a1a1f] hover:bg-[#25252a] border border-[#2d2d30] rounded-sm transition-colors text-left text-[11px] text-[#e0e0e0] group"
+            >
                <div className="flex items-center gap-3">
                  <ExternalLink className="w-4 h-4 text-[#808080]" />
                  <div>
@@ -80,7 +94,7 @@ export default function CaseModal() {
                    <div className="text-[9px] text-[#808080]">View originating intelligence source</div>
                  </div>
                </div>
-            </button>
+            </a>
           </div>
         </div>
       </div>

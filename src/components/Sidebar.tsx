@@ -8,12 +8,13 @@ const CASE_TYPE_LABELS: Record<string, string> = {
   historic: 'Historic',
   current: 'Current',
   passenger: 'Passenger',
-  osint: 'OSINT'
+  osint: 'OSINT',
+  rat: 'Rodent'
 };
 
 export default function Sidebar() {
   const { cases, news, alertsEnabled, setAlertsEnabled, setSelectedCase, isConnected } = useStore();
-  const [caseFilters, setCaseFilters] = useState({ historic: true, current: true, passenger: true, osint: true });
+  const [caseFilters, setCaseFilters] = useState({ historic: true, current: true, passenger: true, osint: true, rat: true });
   const [newsFilters, setNewsFilters] = useState({ MAINSTREAM: true, RAW_DATA: true, INDEPENDENT: true });
 
   const filteredCases = useMemo(
@@ -83,21 +84,69 @@ export default function Sidebar() {
       {/* Main Content Area - Scrollable */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         
+        {/* Filters */}
+        <div className="p-4 border-b border-[#2d2d30]">
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <div>
+              <h2 className="text-[10px] text-[#808080] uppercase font-bold tracking-widest">Threat Filters</h2>
+              <p className="text-[9px] text-[#606060] mt-1">Refine visible cases and feeds by category.</p>
+            </div>
+            <span className="text-[10px] text-[#8b0000] font-mono uppercase tracking-widest">{filteredCases.length} cases</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(caseFilters).map(([key, enabled]) => (
+              <button
+                key={key}
+                onClick={() => toggleCaseFilter(key)}
+                className={`px-2 py-2 text-[9px] uppercase tracking-widest rounded-sm border transition-colors ${enabled ? 'bg-[#ff4d4d] text-black border-[#ff4d4d]' : 'bg-[#1a1a1f] text-[#808080] border-[#2d2d30]'}`}
+              >
+                {CASE_TYPE_LABELS[key] || key}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4">
+            <div className="text-[9px] text-[#808080] uppercase tracking-widest mb-2">News Feed</div>
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(newsFilters).map(([category, enabled]) => (
+                <button
+                  key={category}
+                  onClick={() => toggleNewsFilter(category)}
+                  className={`px-2 py-2 text-[9px] uppercase tracking-widest rounded-sm border transition-colors ${enabled ? 'bg-[#ffaa00] text-black border-[#ffaa00]' : 'bg-[#1a1a1f] text-[#808080] border-[#2d2d30]'}`}
+                >
+                  {category.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Active Threat Vectors */}
         <div className="p-4 border-b border-[#2d2d30]">
-          <h2 className="text-[10px] text-[#808080] uppercase font-bold tracking-widest mb-3 flex items-center gap-2">
-            <ShieldAlert className="w-3 h-3" /> Validated Signatures
-          </h2>
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <h2 className="text-[10px] text-[#808080] uppercase font-bold tracking-widest flex items-center gap-2">
+              <ShieldAlert className="w-3 h-3" /> Validated Signatures
+            </h2>
+            <span className="text-[9px] text-[#808080] uppercase tracking-widest">{filteredCases.length} visible</span>
+          </div>
           <div className="space-y-3">
-            {cases.map((c) => (
+            {filteredCases.map((c) => (
               <div 
                 key={c.id} 
                 onClick={() => setSelectedCase(c)}
                 className="bg-[#1a1a1f] border border-[#2d2d30] p-3 rounded-sm hover:border-[#ff4d4d]/50 hover:bg-[#25252a] transition-all cursor-pointer group"
               >
-                <div className="flex justify-between items-start mb-1">
+                <div className="flex justify-between items-start mb-2 gap-2">
                   <h3 className="text-[11px] font-bold text-[#e0e0e0] group-hover:text-[#ff4d4d] transition-colors line-clamp-1">{c.title}</h3>
-                  {c.isHighRisk && <span className="flex min-w-[6px] min-h-[6px] rounded-full bg-[#ff4d4d] mt-1 shadow-[0_0_5px_rgba(255,77,77,0.8)] animate-pulse" />}
+                  <div className="flex items-center gap-2">
+                    {c.isHighRisk && <span className="flex min-w-[6px] min-h-[6px] rounded-full bg-[#ff4d4d] mt-1 shadow-[0_0_5px_rgba(255,77,77,0.8)] animate-pulse" />}
+                    <span className="text-[8px] uppercase tracking-widest bg-[#1a1a1f] border border-[#2d2d30] px-2 py-1 rounded-full text-[#808080]">{CASE_TYPE_LABELS[c.type || 'current']}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 items-center mb-2">
+                  {c.sourceType && <span className="text-[9px] uppercase tracking-widest bg-[#111111] border border-[#2d2d30] px-2 py-1 rounded-full text-[#7dc7ff]">{c.sourceType}</span>}
+                  {c.confidenceLevel && <span className="text-[9px] uppercase tracking-widest bg-[#111111] border border-[#2d2d30] px-2 py-1 rounded-full text-[#ffd166]">{c.confidenceLevel}</span>}
                 </div>
                 <div className="text-[10px] text-[#8b0000] mb-2 font-mono uppercase tracking-wider">Lat: {c.lat.toFixed(2)} / Lng: {c.lng.toFixed(2)}</div>
                 <p className="text-[10px] text-[#808080] leading-tight line-clamp-2">{c.description}</p>
@@ -113,10 +162,12 @@ export default function Sidebar() {
               <Newspaper className="w-3 h-3" /> Mainstream Narrative
             </h2>
             <div className="space-y-3">
-              {news.filter(n => n.category === 'MAINSTREAM').sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((n) => (
+              {filteredNews.filter(n => n.category === 'MAINSTREAM').sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((n) => (
                 <a 
                   key={n.id} 
                   href={n.url}
+                  target="_blank"
+                  rel="noreferrer"
                   className="block bg-[#1a1a1f] border border-[#2d2d30] overflow-hidden hover:border-[#ffaa00]/50 transition-colors group"
                 >
                   {n.imageUrl && (
@@ -139,10 +190,12 @@ export default function Sidebar() {
               <Newspaper className="w-3 h-3" /> Raw / Live Data Intercepts
             </h2>
             <div className="space-y-3">
-              {news.filter(n => n.category === 'RAW_DATA').sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((n) => (
+              {filteredNews.filter(n => n.category === 'RAW_DATA').sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((n) => (
                 <a 
                   key={n.id} 
                   href={n.url}
+                  target="_blank"
+                  rel="noreferrer"
                   className="block bg-[#1a1a1f] border-l-2 border-[#ff0000] border-y border-r border-[#2d2d30]/50 overflow-hidden hover:bg-[#25252a] hover:border-r-transparent transition-colors group"
                 >
                   {n.imageUrl && (

@@ -29,7 +29,7 @@ export default function RightPanel() {
     if (cases.length > 0 || news.length > 0) {
       determineRisk();
     }
-  }, []);
+  }, [cases, news]);
 
   return (
     <div className="w-full md:w-[26rem] bg-[#0f0f12] flex flex-col h-screen text-[#e0e0e0] overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.8)] relative z-10 font-sans">
@@ -77,8 +77,13 @@ export default function RightPanel() {
                   <Loader2 className="w-4 h-4 animate-spin" /> PROCESSING
                 </div>
               ) : (
-                <div className={`font-mono text-lg font-bold ${aiRisk?.level === 'CRITICAL' ? 'text-[#ff4d4d]' : aiRisk?.level === 'HIGH' ? 'text-[#ffaa00]' : 'text-green-500'}`}>
-                  {aiRisk?.level || 'AWAITING DATA'} // {aiRisk ? `SCORE: ${aiRisk.score}/100` : 'N/A'}
+                <div className="space-y-1">
+                  <div className={`font-mono text-lg font-bold ${aiRisk?.level === 'CRITICAL' ? 'text-[#ff4d4d]' : aiRisk?.level === 'HIGH' ? 'text-[#ffaa00]' : 'text-green-500'}`}>
+                    {aiRisk?.level || 'AWAITING DATA'}
+                  </div>
+                  {aiRisk && (
+                    <div className="text-[10px] text-[#808080] uppercase tracking-widest">Score: {aiRisk.score}/100</div>
+                  )}
                 </div>
               )}
             </div>
