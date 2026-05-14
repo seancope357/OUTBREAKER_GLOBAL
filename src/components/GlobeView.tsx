@@ -53,9 +53,9 @@ export default function GlobeView() {
     <div className="w-full h-full bg-[#050507] relative">
       <DeckGL
         layers={[]}
-        viewState={viewState}
+        viewState={viewState as any}
         controller={true}
-        onViewStateChange={(e) => setViewState(e.viewState)}
+        onViewStateChange={(e: any) => setViewState(e.viewState)}
       >
         <Map
           mapStyle={mapStyleUrl}

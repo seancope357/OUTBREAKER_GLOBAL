@@ -1,5 +1,11 @@
-export type SourceType = 'authoritative' | 'osint' | 'movement' | 'social';
+export type SourceType = 'authoritative' | 'osint' | 'movement' | 'social' | 'vector' | 'rodent';
 export type ConfidenceLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface FeedHealth {
+  status: 'healthy' | 'degraded' | 'offline';
+  lastUpdated: string;
+  message: string;
+}
 
 export interface CaseData {
   id: string;

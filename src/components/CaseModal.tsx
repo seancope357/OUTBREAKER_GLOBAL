@@ -59,6 +59,9 @@ export default function CaseModal() {
             {selectedCase.confidenceLevel && (
               <span className="text-[9px] uppercase tracking-widest bg-[#111111] border border-[#2d2d30] px-2 py-1 rounded-full text-[#ffd166]">Confidence: {selectedCase.confidenceLevel}</span>
             )}
+            {selectedCase.entity && (
+              <span className="text-[9px] uppercase tracking-widest bg-[#111111] border border-[#2d2d30] px-2 py-1 rounded-full text-[#ff8c00]">{selectedCase.entity}</span>
+            )}
           </div>
 
           <div className="mt-6 flex flex-col gap-2">
@@ -81,20 +84,32 @@ export default function CaseModal() {
               </div>
             </button>
 
-            <a
-              href={selectedCase.sourceUrl || '#'}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-between w-full p-3 bg-[#1a1a1f] hover:bg-[#25252a] border border-[#2d2d30] rounded-sm transition-colors text-left text-[11px] text-[#e0e0e0] group"
-            >
-               <div className="flex items-center gap-3">
-                 <ExternalLink className="w-4 h-4 text-[#808080]" />
-                 <div>
-                   <div className="font-bold uppercase tracking-wider text-white">{selectedCase.source}</div>
-                   <div className="text-[9px] text-[#808080]">View originating intelligence source</div>
-                 </div>
-               </div>
-            </a>
+            {selectedCase.sourceUrl ? (
+              <a
+                href={selectedCase.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between w-full p-3 bg-[#1a1a1f] hover:bg-[#25252a] border border-[#2d2d30] rounded-sm transition-colors text-left text-[11px] text-[#e0e0e0] group"
+              >
+                <div className="flex items-center gap-3">
+                  <ExternalLink className="w-4 h-4 text-[#808080]" />
+                  <div>
+                    <div className="font-bold uppercase tracking-wider text-white">{selectedCase.source}</div>
+                    <div className="text-[9px] text-[#808080]">View originating intelligence source</div>
+                  </div>
+                </div>
+              </a>
+            ) : (
+              <div className="flex items-center justify-between w-full p-3 bg-[#1a1a1f] border border-[#2d2d30] rounded-sm text-[11px] text-[#808080] opacity-80">
+                <div className="flex items-center gap-3">
+                  <ExternalLink className="w-4 h-4 text-[#808080]" />
+                  <div>
+                    <div className="font-bold uppercase tracking-wider text-white">{selectedCase.source}</div>
+                    <div className="text-[9px] text-[#808080]">No direct source link available</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

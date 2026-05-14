@@ -16,12 +16,18 @@ interface AppState {
   selectedCase: CaseData | null;
   alertsEnabled: boolean;
   isConnected: boolean;
+  feedHealth: {
+    status: 'healthy' | 'degraded' | 'offline';
+    lastUpdated: string;
+    message: string;
+  };
   setCases: (cases: CaseData[]) => void;
   setNews: (news: NewsFeedItem[]) => void;
   setTrajectories: (trajectories: TrajectoryData[]) => void;
   setSelectedCase: (c: CaseData | null) => void;
   setAlertsEnabled: (enabled: boolean) => void;
   setIsConnected: (connected: boolean) => void;
+  setFeedHealth: (health: { status: 'healthy' | 'degraded' | 'offline'; lastUpdated: string; message: string }) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -31,12 +37,14 @@ export const useStore = create<AppState>((set) => ({
   selectedCase: null,
   alertsEnabled: true,
   isConnected: false,
+  feedHealth: { status: 'offline', lastUpdated: new Date().toISOString(), message: 'Awaiting feed status.' },
   setCases: (cases) => set({ cases }),
   setNews: (news) => set({ news }),
   setTrajectories: (trajectories) => set({ trajectories }),
   setSelectedCase: (selectedCase) => set({ selectedCase }),
   setAlertsEnabled: (alertsEnabled) => set({ alertsEnabled }),
   setIsConnected: (isConnected) => set({ isConnected }),
+  setFeedHealth: (feedHealth) => set({ feedHealth }),
 }));
 
 // Initialize WebSocket Sync
@@ -66,6 +74,7 @@ export const connectWebSocket = () => {
         if (payload.cases) useStore.getState().setCases(payload.cases);
         if (payload.news) useStore.getState().setNews(payload.news);
         if (payload.trajectories) useStore.getState().setTrajectories(payload.trajectories);
+        if (payload.feedHealth) useStore.getState().setFeedHealth(payload.feedHealth);
       }
     } catch (err) {
       console.error("Failed to parse WS data", err);

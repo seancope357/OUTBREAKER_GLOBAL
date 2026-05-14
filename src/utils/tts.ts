@@ -3,15 +3,44 @@ import { GoogleGenAI, Modality } from "@google/genai";
 let aiInstance: GoogleGenAI | null = null;
 let audioContext: AudioContext | null = null;
 
+const speakWithBrowser = async (text: string) => {
+  if (!('speechSynthesis' in window)) {
+    console.warn('Browser TTS API unavailable.');
+    return;
+  }
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.pitch = 0.95;
+  utterance.rate = 1.0;
+  utterance.volume = 1.0;
+  utterance.lang = 'en-US';
+
+  return new Promise<void>((resolve) => {
+    utterance.onend = () => resolve();
+    utterance.onerror = () => resolve();
+    window.speechSynthesis.speak(utterance);
+  });
+};
+
 const getAI = () => {
   if (!aiInstance) {
-    aiInstance = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY as string | undefined;
+    if (!apiKey) {
+      throw new Error('Gemini API key is not configured.');
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
   }
   return aiInstance;
 };
 
 export const playBriefingAudio = async (text: string) => {
   try {
+    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY as string | undefined;
+    if (!apiKey) {
+      await speakWithBrowser(text);
+      return;
+    }
+
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3.1-flash-tts-preview",
@@ -28,13 +57,13 @@ export const playBriefingAudio = async (text: string) => {
 
     const part = response.candidates?.[0]?.content?.parts?.[0];
     if (!part?.inlineData?.data) {
-      console.warn("No audio data recieved from TTS model.");
+      console.warn("No audio data received from TTS model.");
+      await speakWithBrowser(text);
       return;
     }
 
     const { data: base64Audio, mimeType } = part.inlineData;
     
-    // Some endpoints may return playable formats like wav/mp3
     if (mimeType && (mimeType.includes("wav") || mimeType.includes("mpeg") || mimeType.includes("mp3"))) {
       const audioUrl = `data:${mimeType};base64,${base64Audio}`;
       const audio = new Audio(audioUrl);
@@ -42,7 +71,6 @@ export const playBriefingAudio = async (text: string) => {
       return;
     }
 
-    // Default: Raw PCM 16-bit 24kHz decode
     if (!audioContext) {
       audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
     }
@@ -60,7 +88,7 @@ export const playBriefingAudio = async (text: string) => {
     const int16 = new Int16Array(bytes.buffer);
     const float32 = new Float32Array(int16.length);
     for (let i = 0; i < int16.length; i++) {
-        float32[i] = int16[i] / 32768;
+      float32[i] = int16[i] / 32768;
     }
     
     const audioBuffer = audioContext.createBuffer(1, float32.length, 24000);
@@ -73,5 +101,6 @@ export const playBriefingAudio = async (text: string) => {
 
   } catch (error) {
     console.error("Failed to play TTS audio:", error);
+    await speakWithBrowser(text);
   }
 };

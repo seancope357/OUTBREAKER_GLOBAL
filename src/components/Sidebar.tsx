@@ -22,6 +22,20 @@ export default function Sidebar() {
     [cases, caseFilters]
   );
 
+  const caseSummary = useMemo(() => {
+    return cases.reduce(
+      (acc, c) => {
+        const type = c.type ?? 'current';
+        acc[type] = (acc[type] || 0) + 1;
+        if (c.entity === 'rodent') acc.rodent = (acc.rodent || 0) + 1;
+        if (c.entity === 'human') acc.human = (acc.human || 0) + 1;
+        if (c.isHighRisk) acc.highRisk += 1;
+        return acc;
+      },
+      { historic: 0, current: 0, passenger: 0, osint: 0, rat: 0, human: 0, rodent: 0, highRisk: 0 } as Record<string, number>
+    );
+  }, [cases]);
+
   const filteredNews = useMemo(
     () => news.filter((n) => newsFilters[n.category ?? 'MAINSTREAM']),
     [news, newsFilters]
@@ -91,7 +105,9 @@ export default function Sidebar() {
               <h2 className="text-[10px] text-[#808080] uppercase font-bold tracking-widest">Threat Filters</h2>
               <p className="text-[9px] text-[#606060] mt-1">Refine visible cases and feeds by category.</p>
             </div>
-            <span className="text-[10px] text-[#8b0000] font-mono uppercase tracking-widest">{filteredCases.length} cases</span>
+            <span className={`text-[10px] font-mono uppercase tracking-widest ${isConnected ? 'text-[#7dc7ff]' : 'text-[#ff4d4d]'}`}>
+              {isConnected ? 'CONNECTED' : 'OFFLINE'}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -104,6 +120,21 @@ export default function Sidebar() {
                 {CASE_TYPE_LABELS[key] || key}
               </button>
             ))}
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mb-4 text-[10px] uppercase tracking-widest text-[#808080]">
+            <div className="bg-[#111111] border border-[#2d2d30] rounded-sm p-2">
+              <div className="text-[8px] uppercase tracking-[0.25em] text-[#808080]">High-Risk Signals</div>
+              <div className="text-base font-bold text-[#ff4d4d]">{caseSummary.highRisk}</div>
+            </div>
+            <div className="bg-[#111111] border border-[#2d2d30] rounded-sm p-2">
+              <div className="text-[8px] uppercase tracking-[0.25em] text-[#808080]">Rodent Indicators</div>
+              <div className="text-base font-bold text-[#7dc7ff]">{caseSummary.rodent}</div>
+            </div>
+            <div className="bg-[#111111] border border-[#2d2d30] rounded-sm p-2">
+              <div className="text-[8px] uppercase tracking-[0.25em] text-[#808080]">Human Cases</div>
+              <div className="text-base font-bold text-[#ffaa00]">{caseSummary.human}</div>
+            </div>
           </div>
 
           <div className="mt-4">

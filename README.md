@@ -15,6 +15,11 @@ View your app in AI Studio: https://ai.studio/apps/19c6cc81-5c09-4392-9f22-55792
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key. If missing, the app will still run with browser TTS fallback and local OSINT reports.
 3. Run the app:
    `npm run dev`
+
+## Live Data Notes
+- The app aggregates OSINT and simulated rodent/human case indicators.
+- If external RSS feeds fail, the app continues using curated local and fallback OSINT reports.
+- Use `/api/data-status` to inspect backend feed health during development.
