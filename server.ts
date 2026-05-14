@@ -9,11 +9,51 @@ import { GoogleGenAI } from "@google/genai";
 const parser = new Parser();
 const PORT = 3000;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const RSS_FEEDS = [
-  "https://wwwnc.cdc.gov/travel/rss/notices.xml", // CDC travel notices
-  "https://www.cidrap.umn.edu/news/rss", // CIDRAP News
-  "http://outbreaknewstoday.com/feed/" // Outbreak News Today
+
+const DATA_SOURCES = [
+  {
+    id: 'cdc-travel',
+    label: 'CDC Travel Notices',
+    url: 'https://wwwnc.cdc.gov/travel/rss/notices.xml',
+    type: 'authoritative',
+    category: 'MAINSTREAM',
+    confidence: 'HIGH'
+  },
+  {
+    id: 'cidrap-news',
+    label: 'CIDRAP News',
+    url: 'https://www.cidrap.umn.edu/news/rss',
+    type: 'authoritative',
+    category: 'MAINSTREAM',
+    confidence: 'HIGH'
+  },
+  {
+    id: 'outbreak-news-today',
+    label: 'Outbreak News Today',
+    url: 'http://outbreaknewstoday.com/feed/',
+    type: 'osint',
+    category: 'RAW_DATA',
+    confidence: 'MEDIUM'
+  },
+  {
+    id: 'promed',
+    label: 'ProMED-mail',
+    url: 'https://promedmail.org/feed/?x=0',
+    type: 'osint',
+    category: 'RAW_DATA',
+    confidence: 'HIGH'
+  },
+  {
+    id: 'healthmap',
+    label: 'HealthMap',
+    url: 'https://healthmap.org/rss',
+    type: 'osint',
+    category: 'RAW_DATA',
+    confidence: 'MEDIUM'
+  }
 ];
+
+const RSS_FEEDS = DATA_SOURCES.map((source) => source.url);
 
 // Historical real Hantavirus cases to seed the map so it isn't completely empty, 
 // strictly using authenticated real CDC/WHO documented outbreaks since live occurrences are sparse.
@@ -235,34 +275,41 @@ const curatedNews = [
   }
 ];
 
+function normalizeNewsItem(item: any, source: any) {
+  const text = `${item.title || ''} ${item.contentSnippet || item.content || ''}`;
+  const summary = (item.contentSnippet || item.content || '').toString().substring(0, 160).trim();
+  return {
+    id: item.guid || item.link || `${source.id}-${Math.random().toString(36).slice(2)}`,
+    title: item.title || 'Untitled report',
+    summary: summary.length ? summary + '...' : 'No summary available.',
+    url: item.link || '#',
+    date: item.pubDate || new Date().toISOString(),
+    trusted: source.type === 'authoritative',
+    source: source.label,
+    sourceType: source.type,
+    confidenceLevel: source.confidence,
+    imageUrl: item.enclosure?.url || 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=500&auto=format&fit=crop&q=60',
+    category: source.category
+  };
+}
+
 async function fetchLiveNews() {
   const allNews: any[] = [];
-  for (const url of RSS_FEEDS) {
+  for (const source of DATA_SOURCES) {
     try {
-      const feed = await parser.parseURL(url);
+      const feed = await parser.parseURL(source.url);
       feed.items.forEach(item => {
-        const lowerText = (item.title + " " + item.contentSnippet).toLowerCase();
-        // Broader filter for generalized OSINT outbreak scanning
-        if (lowerText.includes("hanta") || lowerText.includes("hps") || lowerText.includes("orthohantavirus") || lowerText.includes("outbreak") || lowerText.includes("virus") || lowerText.includes("fever") || lowerText.includes("disease") || lowerText.includes("pathogen")) {
-          allNews.push({
-            id: item.guid || item.link,
-            title: item.title,
-            summary: item.contentSnippet?.substring(0, 150) + "...",
-            url: item.link,
-            date: item.pubDate || new Date().toISOString(),
-            trusted: true,
-            source: feed.title || "Public Health API",
-            category: 'RAW_DATA',
-            // Simple placeholder image for raw data feeds
-            imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=500&auto=format&fit=crop&q=60'
-          });
+        if (!item.title || !item.link) return;
+        const lowerText = `${item.title} ${(item.contentSnippet || item.content || '')}`.toLowerCase();
+        if (source.type === 'authoritative' || /hanta|hps|orthohantavirus|outbreak|virus|fever|disease|pathogen|infectious|respiratory|wastewater/.test(lowerText)) {
+          allNews.push(normalizeNewsItem(item, source));
         }
       });
     } catch (e) {
-      console.error("Error fetching feed", url, e);
+      console.error('Error fetching feed', source.url, e);
     }
   }
-  return [...curatedNews, ...allNews].slice(0, 15); // Combine with curated
+  return [...curatedNews, ...allNews].slice(0, 30);
 }
 
 async function startServer() {
@@ -322,30 +369,52 @@ ${JSON.stringify(news).slice(0, 5000)}`;
 
   const updateFeeds = async () => {
     liveNews = await fetchLiveNews();
-    
-    // Attempt rudimentary extraction of any "hanta" related news
+
+    // Rebuild live OSINT and movement indicators each update cycle.
+    const dynamicCases: any[] = [];
+
     liveNews.forEach((news: any) => {
-      // If it's a new occurrence not in activeLiveCases and it's a generic public alert
-      const exists = activeLiveCases.find(c => c.id === news.id);
-      if (!exists && news.category === 'RAW_DATA' && news.title.includes('Anomalous')) {
-        // Just an example of dynamically plotting based on news
-         activeLiveCases.push({
-           id: news.id,
-           lat: -24.0, // Nearby the cruise ship index point
-           lng: -46.0,
-           size: 0.5,
-           color: "#ff00aa",
-           title: "LIVE VECTOR ALERT: " + news.title,
-           description: news.summary,
-           date: news.date,
-           source: news.source,
-           isHighRisk: true,
-           type: 'current'
-         });
+      if (news.category === 'RAW_DATA' && news.title.toLowerCase().includes('anomalous')) {
+        dynamicCases.push({
+          id: `osint-${news.id}`,
+          lat: -24.0,
+          lng: -46.0,
+          size: 0.55,
+          color: '#ff00aa',
+          title: `LIVE OSINT ALERT: ${news.title}`,
+          description: news.summary,
+          date: news.date,
+          source: news.source,
+          sourceUrl: news.url,
+          sourceType: 'osint',
+          confidenceLevel: news.confidenceLevel || 'HIGH',
+          isHighRisk: true,
+          type: 'osint'
+        });
+      }
+
+      if (news.category === 'RAW_DATA' && /flight|passenger|manifest|port|harbor|dock|ship|cruise/.test(news.title.toLowerCase())) {
+        dynamicCases.push({
+          id: `movement-${news.id}`,
+          lat: news.title.toLowerCase().includes('brooklyn') ? 40.7121 : news.title.toLowerCase().includes('london') ? 51.5074 : news.title.toLowerCase().includes('sydney') ? -33.8688 : -23.9618,
+          lng: news.title.toLowerCase().includes('brooklyn') ? -73.9504 : news.title.toLowerCase().includes('london') ? -0.1278 : news.title.toLowerCase().includes('sydney') ? 151.2093 : -46.3322,
+          size: 0.35,
+          color: '#ffaa00',
+          title: `MOVEMENT SIGNAL: ${news.title}`,
+          description: news.summary,
+          date: news.date,
+          source: news.source,
+          sourceUrl: news.url,
+          sourceType: 'movement',
+          confidenceLevel: news.confidenceLevel || 'MEDIUM',
+          isHighRisk: Boolean(news.title.toLowerCase().includes('flight') || news.title.toLowerCase().includes('passenger')),
+          type: 'osint'
+        });
       }
     });
 
-    // Broadcast update
+    activeLiveCases = dynamicCases;
+
     const stateUpdate = JSON.stringify({
       type: "SYNC_STATE",
       payload: {

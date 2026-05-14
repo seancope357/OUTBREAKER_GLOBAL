@@ -1,3 +1,6 @@
+export type SourceType = 'authoritative' | 'osint' | 'movement' | 'social';
+export type ConfidenceLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
 export interface CaseData {
   id: string;
   lat: number;
@@ -9,8 +12,10 @@ export interface CaseData {
   date: string;
   source: string;
   sourceUrl?: string;
+  sourceType?: SourceType;
+  confidenceLevel?: ConfidenceLevel;
   isHighRisk?: boolean;
-  type?: 'historic' | 'current' | 'passenger';
+  type?: 'historic' | 'current' | 'passenger' | 'osint';
 }
 
 export interface NewsFeedItem {
@@ -21,6 +26,8 @@ export interface NewsFeedItem {
   date: string;
   trusted: boolean;
   source: string;
+  sourceType?: SourceType;
+  confidenceLevel?: ConfidenceLevel;
   imageUrl?: string;
   category?: 'MAINSTREAM' | 'RAW_DATA' | 'INDEPENDENT';
 }

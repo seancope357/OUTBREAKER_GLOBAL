@@ -1,19 +1,47 @@
+import { useMemo, useState } from 'react';
 import { Bell, BellOff, ShieldAlert, Newspaper, Radio } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { requestNotificationPermission, playUrgentAlert, sendPushNotification } from '../utils/audio';
 import { SpinningBiohazard } from './BiohazardMarker';
 
+const CASE_TYPE_LABELS: Record<string, string> = {
+  historic: 'Historic',
+  current: 'Current',
+  passenger: 'Passenger',
+  osint: 'OSINT'
+};
+
 export default function Sidebar() {
   const { cases, news, alertsEnabled, setAlertsEnabled, setSelectedCase, isConnected } = useStore();
+  const [caseFilters, setCaseFilters] = useState({ historic: true, current: true, passenger: true, osint: true });
+  const [newsFilters, setNewsFilters] = useState({ MAINSTREAM: true, RAW_DATA: true, INDEPENDENT: true });
+
+  const filteredCases = useMemo(
+    () => cases.filter((c) => caseFilters[c.type ?? 'current']),
+    [cases, caseFilters]
+  );
+
+  const filteredNews = useMemo(
+    () => news.filter((n) => newsFilters[n.category ?? 'MAINSTREAM']),
+    [news, newsFilters]
+  );
+
+  const toggleCaseFilter = (type: string) => {
+    setCaseFilters((prev) => ({ ...prev, [type]: !prev[type as keyof typeof prev] }));
+  };
+
+  const toggleNewsFilter = (category: string) => {
+    setNewsFilters((prev) => ({ ...prev, [category]: !prev[category as keyof typeof prev] }));
+  };
 
   const handleToggleAlerts = async () => {
     if (!alertsEnabled) {
       const granted = await requestNotificationPermission();
       if (granted) {
         setAlertsEnabled(true);
-        sendPushNotification("Alerts Enabled", { body: "You will now receive critical epidemiological updates." });
+        sendPushNotification('Alerts Enabled', { body: 'You will now receive critical epidemiological updates.' });
       } else {
-        alert("Notification permissions were denied by the browser.");
+        alert('Notification permissions were denied by the browser.');
       }
     } else {
       setAlertsEnabled(false);
