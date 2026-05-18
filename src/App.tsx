@@ -19,13 +19,19 @@ export default function App() {
 
   return (
     <FluentProvider theme={webDarkTheme}>
-      <div className="flex flex-col md:flex-row w-full h-screen bg-[#0a0a0c] text-[#e0e0e0] overflow-hidden font-sans select-none">
-        <div className="absolute inset-x-0 top-0 z-20 pointer-events-none">
+      <div className="flex flex-col md:flex-row w-full h-screen bg-[#0a0a0c] text-[#e0e0e0] overflow-hidden font-sans">
+        <a
+          href="#main-globe"
+          className="absolute left-2 top-2 z-50 -translate-y-16 focus:translate-y-0 transition-transform bg-[#1a1a1f] border border-[#4d4dff] text-[#4d4dff] text-[10px] uppercase tracking-widest px-3 py-2 rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4d4dff]"
+        >
+          Skip to globe
+        </a>
+        <div className="absolute inset-x-0 top-0 z-20 pointer-events-none select-none">
           <div className="mx-auto max-w-[1800px] px-4 py-2 flex items-center justify-between text-[10px] uppercase tracking-[0.3em] text-[#7c7c7c]">
             <span>Hantavirus Rat & Case Threat Matrix</span>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full border border-[#2d2d30] bg-[#111111]/80 px-2 py-1 text-[#7dc7ff]">Live Intelligence Feed</span>
-              <Button appearance="secondary" size="small" onClick={() => connectWebSocket()}>
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <span className="rounded-full border border-[#2d2d30] bg-[#111111]/80 px-2 py-1 text-[#7dc7ff]" aria-live="polite">Live Intelligence Feed</span>
+              <Button appearance="secondary" size="small" onClick={() => connectWebSocket()} aria-label="Reconnect to live feed">
                 Refresh Feed
               </Button>
             </div>
@@ -38,9 +44,9 @@ export default function App() {
           INITIALIZING GEOSPATIAL RENDERER...
         </div>
       }>
-        <div className="flex-1 h-[50vh] md:h-screen relative border-r border-l border-[#2d2d30]">
+        <main id="main-globe" role="main" aria-label="Global threat globe" className="flex-1 h-[50vh] md:h-screen relative border-r border-l border-[#2d2d30]">
            <GlobeView />
-        </div>
+        </main>
       </Suspense>
       <RightPanel />
       <CaseModal />

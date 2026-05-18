@@ -2,6 +2,7 @@ import { X, ExternalLink, PlayCircle, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { playBriefingAudio } from '../utils/tts';
+import { isValidSourceUrl } from '../utils/links';
 
 export default function CaseModal() {
   const selectedCase = useStore((state) => state.selectedCase);
@@ -84,20 +85,22 @@ export default function CaseModal() {
               </div>
             </button>
 
-            {selectedCase.sourceUrl ? (
+            {isValidSourceUrl(selectedCase.sourceUrl) ? (
               <a
                 href={selectedCase.sourceUrl}
                 target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between w-full p-3 bg-[#1a1a1f] hover:bg-[#25252a] border border-[#2d2d30] rounded-sm transition-colors text-left text-[11px] text-[#e0e0e0] group"
+                rel="noreferrer noopener"
+                aria-label={`Open originating source: ${selectedCase.source}`}
+                className="flex items-center justify-between w-full p-3 bg-[#1a1a1f] hover:bg-[#25252a] border border-[#2d2d30] rounded-sm transition-colors text-left text-[11px] text-[#e0e0e0] group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4d4dff]"
               >
                 <div className="flex items-center gap-3">
-                  <ExternalLink className="w-4 h-4 text-[#808080]" />
+                  <ExternalLink className="w-4 h-4 text-[#7dc7ff]" />
                   <div>
                     <div className="font-bold uppercase tracking-wider text-white">{selectedCase.source}</div>
-                    <div className="text-[9px] text-[#808080]">View originating intelligence source</div>
+                    <div className="text-[9px] text-[#7dc7ff] break-all">{selectedCase.sourceUrl}</div>
                   </div>
                 </div>
+                <span className="text-[8px] uppercase tracking-widest text-[#7dc7ff]">Open ↗</span>
               </a>
             ) : (
               <div className="flex items-center justify-between w-full p-3 bg-[#1a1a1f] border border-[#2d2d30] rounded-sm text-[11px] text-[#808080] opacity-80">

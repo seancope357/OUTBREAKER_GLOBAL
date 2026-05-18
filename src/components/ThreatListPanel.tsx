@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Button, Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow } from '@fluentui/react-components';
 import { useStore } from '../store/useStore';
+import { isValidSourceUrl } from '../utils/links';
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -155,14 +156,19 @@ export default function ThreatListPanel() {
               <div className="text-[10px] text-[#c8c8c8] line-clamp-2">{alert.summary}</div>
               <div className="mt-2 flex items-center justify-between gap-2">
                 <span className="text-[9px] uppercase tracking-[0.25em] text-[#7dc7ff]">{alert.source}</span>
-                <a
-                  className="text-[9px] text-[#7dc7ff] hover:underline"
-                  href={alert.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  View Source
-                </a>
+                {isValidSourceUrl(alert.url) ? (
+                  <a
+                    className="text-[9px] text-[#7dc7ff] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7dc7ff]"
+                    href={alert.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={`Open source: ${alert.source} — ${alert.title}`}
+                  >
+                    View Source ↗
+                  </a>
+                ) : (
+                  <span className="text-[9px] text-[#555]" aria-label="No source link available">no link</span>
+                )}
               </div>
             </div>
           ))}

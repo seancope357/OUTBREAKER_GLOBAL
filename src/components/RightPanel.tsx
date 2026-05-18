@@ -1,12 +1,18 @@
 import { useStore } from '../store/useStore';
 import { Activity, Beaker, BrainCircuit, Loader2 } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import ThreatListPanel from './ThreatListPanel';
+
+const RISK_MIN_INTERVAL_MS = 60_000; // never call Gemini more than once per minute per client
 
 export default function RightPanel() {
   const { cases, news, isConnected, feedHealth } = useStore();
   const [aiRisk, setAiRisk] = useState<{ level: string, reason: string, score: number } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lastAssessedAt, setLastAssessedAt] = useState<number | null>(null);
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
+  const inFlightRef = useRef<AbortController | null>(null);
+  const ranInitialRef = useRef(false);
 
   const summary = useMemo(() => {
     return cases.reduce(
@@ -21,29 +27,52 @@ export default function RightPanel() {
     );
   }, [cases]);
 
-  const determineRisk = async () => {
+  const determineRisk = useCallback(async (force = false) => {
+    const now = Date.now();
+    if (!force && lastAssessedAt && now - lastAssessedAt < RISK_MIN_INTERVAL_MS) return;
+    if (rateLimitedUntil && now < rateLimitedUntil) return;
+
+    // Cancel any in-flight call to avoid races on rapid clicks.
+    inFlightRef.current?.abort();
+    const ctrl = new AbortController();
+    inFlightRef.current = ctrl;
+
     setLoading(true);
     try {
       const res = await fetch('/api/assess-risk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cases, news })
+        body: JSON.stringify({ cases, news }),
+        signal: ctrl.signal,
       });
+      if (res.status === 429) {
+        const retryAfter = Number(res.headers.get('Retry-After')) || 60;
+        setRateLimitedUntil(Date.now() + retryAfter * 1000);
+        setAiRisk((prev) => prev || { level: 'UNKNOWN', reason: 'Rate limited by AI core. Retrying shortly.', score: 0 });
+        return;
+      }
       const data = await res.json();
       setAiRisk(data.riskAssessment);
-    } catch (e) {
+      setLastAssessedAt(Date.now());
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
       console.error(e);
       setAiRisk({ level: 'UNKNOWN', reason: 'Failed to reach AI assessment core.', score: 0 });
     } finally {
       setLoading(false);
     }
-  };
+  }, [cases, news, lastAssessedAt, rateLimitedUntil]);
 
+  // Run exactly once when the first batch of data arrives — never re-fire on every WS push.
   useEffect(() => {
-    if (cases.length > 0 || news.length > 0) {
-      determineRisk();
-    }
-  }, [cases, news]);
+    if (ranInitialRef.current) return;
+    if (cases.length === 0 && news.length === 0) return;
+    ranInitialRef.current = true;
+    determineRisk(true);
+  }, [cases.length, news.length, determineRisk]);
+
+  // Cancel any pending request on unmount.
+  useEffect(() => () => inFlightRef.current?.abort(), []);
 
   return (
     <div className="w-full md:w-[26rem] bg-[#0f0f12] flex flex-col h-screen text-[#e0e0e0] overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.8)] relative z-10 font-sans">
@@ -90,12 +119,13 @@ export default function RightPanel() {
           <h2 className="text-[10px] text-[#808080] uppercase font-bold tracking-widest flex items-center gap-2">
             <BrainCircuit className="w-3 h-3 text-[#4d4dff]" /> AI Threat Synthesis
           </h2>
-          <button 
-            onClick={determineRisk} 
-            disabled={loading}
-            className="text-[9px] bg-[#4d4dff]/10 text-[#4d4dff] border border-[#4d4dff] px-2 py-0.5 font-mono hover:bg-[#4d4dff]/20 transition-colors"
+          <button
+            onClick={() => determineRisk(true)}
+            disabled={loading || Boolean(rateLimitedUntil && Date.now() < rateLimitedUntil)}
+            aria-label="Force AI risk reevaluation"
+            className="text-[9px] bg-[#4d4dff]/10 text-[#4d4dff] border border-[#4d4dff] px-2 py-0.5 font-mono hover:bg-[#4d4dff]/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4d4dff] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'ANALYZING...' : 'FORCE REEVAL'}
+            {loading ? 'ANALYZING…' : (rateLimitedUntil && Date.now() < rateLimitedUntil) ? 'COOLDOWN' : 'FORCE REEVAL'}
           </button>
         </div>
         

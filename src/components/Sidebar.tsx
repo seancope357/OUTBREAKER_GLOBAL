@@ -1,24 +1,27 @@
 import { useMemo, useState } from 'react';
-import { Bell, BellOff, ShieldAlert, Newspaper, Radio } from 'lucide-react';
+import { Bell, BellOff, ShieldAlert, Newspaper } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { requestNotificationPermission, playUrgentAlert, sendPushNotification } from '../utils/audio';
 import { SpinningBiohazard } from './BiohazardMarker';
+import { isValidSourceUrl } from '../utils/links';
 
 const CASE_TYPE_LABELS: Record<string, string> = {
   historic: 'Historic',
-  current: 'Current',
+  current: 'Confirmed',
   passenger: 'Passenger',
   osint: 'OSINT',
-  rat: 'Rodent'
+  rat: 'Rodent',
+  'who-don': 'WHO Outbreak',
+  wastewater: 'Wastewater'
 };
 
 export default function Sidebar() {
   const { cases, news, alertsEnabled, setAlertsEnabled, setSelectedCase, isConnected } = useStore();
-  const [caseFilters, setCaseFilters] = useState({ historic: true, current: true, passenger: true, osint: true, rat: true });
+  const [caseFilters, setCaseFilters] = useState({ historic: true, current: true, passenger: true, osint: true, rat: true, 'who-don': true, wastewater: true });
   const [newsFilters, setNewsFilters] = useState({ MAINSTREAM: true, RAW_DATA: true, INDEPENDENT: true });
 
   const filteredCases = useMemo(
-    () => cases.filter((c) => caseFilters[c.type ?? 'current']),
+    () => cases.filter((c) => caseFilters[(c.type ?? 'current') as keyof typeof caseFilters]),
     [cases, caseFilters]
   );
 
@@ -32,7 +35,7 @@ export default function Sidebar() {
         if (c.isHighRisk) acc.highRisk += 1;
         return acc;
       },
-      { historic: 0, current: 0, passenger: 0, osint: 0, rat: 0, human: 0, rodent: 0, highRisk: 0 } as Record<string, number>
+      { historic: 0, current: 0, passenger: 0, osint: 0, rat: 0, 'who-don': 0, wastewater: 0, human: 0, rodent: 0, highRisk: 0 } as Record<string, number>
     );
   }, [cases]);
 
@@ -81,12 +84,15 @@ export default function Sidebar() {
               <p className="text-[9px] text-[#808080] uppercase tracking-widest leading-none mt-1">Real-Time Pathogen Surveillance</p>
             </div>
           </div>
-          <button 
+          <button
+            type="button"
             onClick={handleToggleAlerts}
-            className={`px-3 py-1.5 bg-[#1a1a1f] border border-[#2d2d30] text-[10px] font-semibold hover:bg-[#25252a] transition-colors flex items-center gap-2 uppercase tracking-wider ${alertsEnabled ? 'text-[#ff4d4d]' : 'text-[#808080]'}`}
+            aria-pressed={alertsEnabled}
+            aria-label={alertsEnabled ? 'Disable push notification alerts' : 'Enable push notification alerts'}
+            className={`px-3 py-1.5 bg-[#1a1a1f] border border-[#2d2d30] text-[10px] font-semibold hover:bg-[#25252a] transition-colors flex items-center gap-2 uppercase tracking-wider focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4d4d] ${alertsEnabled ? 'text-[#ff4d4d]' : 'text-[#808080]'}`}
             title="Toggle Push Notifications"
           >
-            {alertsEnabled ? <Bell className="w-3 h-3" /> : <BellOff className="w-3 h-3" />}
+            {alertsEnabled ? <Bell className="w-3 h-3" aria-hidden="true" /> : <BellOff className="w-3 h-3" aria-hidden="true" />}
           </button>
         </div>
         <div className="flex flex-col items-end pt-2 border-t border-[#2d2d30]/50 mt-2">
@@ -110,12 +116,15 @@ export default function Sidebar() {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div role="group" aria-label="Case type filters" className="grid grid-cols-2 gap-2">
             {Object.entries(caseFilters).map(([key, enabled]) => (
               <button
                 key={key}
+                type="button"
                 onClick={() => toggleCaseFilter(key)}
-                className={`px-2 py-2 text-[9px] uppercase tracking-widest rounded-sm border transition-colors ${enabled ? 'bg-[#ff4d4d] text-black border-[#ff4d4d]' : 'bg-[#1a1a1f] text-[#808080] border-[#2d2d30]'}`}
+                aria-pressed={enabled}
+                aria-label={`Toggle ${CASE_TYPE_LABELS[key] || key} filter`}
+                className={`px-2 py-2 text-[9px] uppercase tracking-widest rounded-sm border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4d4d] ${enabled ? 'bg-[#ff4d4d] text-black border-[#ff4d4d]' : 'bg-[#1a1a1f] text-[#808080] border-[#2d2d30] hover:bg-[#25252a]'}`}
               >
                 {CASE_TYPE_LABELS[key] || key}
               </button>
@@ -139,12 +148,15 @@ export default function Sidebar() {
 
           <div className="mt-4">
             <div className="text-[9px] text-[#808080] uppercase tracking-widest mb-2">News Feed</div>
-            <div className="grid grid-cols-3 gap-2">
+            <div role="group" aria-label="News category filters" className="grid grid-cols-3 gap-2">
               {Object.entries(newsFilters).map(([category, enabled]) => (
                 <button
                   key={category}
+                  type="button"
                   onClick={() => toggleNewsFilter(category)}
-                  className={`px-2 py-2 text-[9px] uppercase tracking-widest rounded-sm border transition-colors ${enabled ? 'bg-[#ffaa00] text-black border-[#ffaa00]' : 'bg-[#1a1a1f] text-[#808080] border-[#2d2d30]'}`}
+                  aria-pressed={enabled}
+                  aria-label={`Toggle ${category.replace('_', ' ')} news filter`}
+                  className={`px-2 py-2 text-[9px] uppercase tracking-widest rounded-sm border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ffaa00] ${enabled ? 'bg-[#ffaa00] text-black border-[#ffaa00]' : 'bg-[#1a1a1f] text-[#808080] border-[#2d2d30] hover:bg-[#25252a]'}`}
                 >
                   {category.replace('_', ' ')}
                 </button>
@@ -163,10 +175,14 @@ export default function Sidebar() {
           </div>
           <div className="space-y-3">
             {filteredCases.map((c) => (
-              <div 
-                key={c.id} 
+              <div
+                key={c.id}
                 onClick={() => setSelectedCase(c)}
-                className="bg-[#1a1a1f] border border-[#2d2d30] p-3 rounded-sm hover:border-[#ff4d4d]/50 hover:bg-[#25252a] transition-all cursor-pointer group"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCase(c); } }}
+                role="button"
+                tabIndex={0}
+                aria-label={`View case details for ${c.title}`}
+                className="bg-[#1a1a1f] border border-[#2d2d30] p-3 rounded-sm hover:border-[#ff4d4d]/50 hover:bg-[#25252a] transition-all cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4d4d]"
               >
                 <div className="flex justify-between items-start mb-2 gap-2">
                   <h3 className="text-[11px] font-bold text-[#e0e0e0] group-hover:text-[#ff4d4d] transition-colors line-clamp-1">{c.title}</h3>
@@ -193,26 +209,38 @@ export default function Sidebar() {
               <Newspaper className="w-3 h-3" /> Mainstream Narrative
             </h2>
             <div className="space-y-3">
-              {filteredNews.filter(n => n.category === 'MAINSTREAM').sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((n) => (
-                <a 
-                  key={n.id} 
-                  href={n.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block bg-[#1a1a1f] border border-[#2d2d30] overflow-hidden hover:border-[#ffaa00]/50 transition-colors group"
-                >
-                  {n.imageUrl && (
-                    <div className="h-20 w-full overflow-hidden">
-                       <img src={n.imageUrl} alt="News Preview" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity grayscale group-hover:grayscale-0" />
+              {filteredNews.filter(n => n.category === 'MAINSTREAM').sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((n) => {
+                const linkable = isValidSourceUrl(n.url);
+                const Inner = (
+                  <>
+                    {n.imageUrl && (
+                      <div className="h-20 w-full overflow-hidden">
+                         <img src={n.imageUrl} alt="" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity grayscale group-hover:grayscale-0" />
+                      </div>
+                    )}
+                    <div className="p-3">
+                      <p className="text-[10px] font-bold text-[#ffaa00] mb-1 line-clamp-1 uppercase">{n.title}</p>
+                      <p className="text-[11px] text-[#e0e0e0] leading-tight mb-2 line-clamp-2">"{n.summary}"</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[9px] text-[#808080] font-mono uppercase">{new Date(n.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} GMT // {n.source}</span>
+                        {linkable && <span className="text-[9px] text-[#ffaa00] font-mono">OPEN ↗</span>}
+                      </div>
                     </div>
-                  )}
-                  <div className="p-3">
-                    <p className="text-[10px] font-bold text-[#ffaa00] mb-1 line-clamp-1 uppercase">{n.title}</p>
-                    <p className="text-[11px] text-[#e0e0e0] leading-tight mb-2 line-clamp-2">"{n.summary}"</p>
-                    <span className="text-[9px] text-[#808080] font-mono block uppercase">{new Date(n.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} GMT // {n.source}</span>
-                  </div>
-                </a>
-              ))}
+                  </>
+                );
+                return linkable ? (
+                  <a
+                    key={n.id}
+                    href={n.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={`Open mainstream source: ${n.title}`}
+                    className="block bg-[#1a1a1f] border border-[#2d2d30] overflow-hidden hover:border-[#ffaa00]/50 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ffaa00]"
+                  >{Inner}</a>
+                ) : (
+                  <div key={n.id} className="block bg-[#1a1a1f] border border-[#2d2d30] overflow-hidden opacity-90 group">{Inner}</div>
+                );
+              })}
             </div>
           </div>
 
@@ -221,27 +249,39 @@ export default function Sidebar() {
               <Newspaper className="w-3 h-3" /> Raw / Live Data Intercepts
             </h2>
             <div className="space-y-3">
-              {filteredNews.filter(n => n.category === 'RAW_DATA').sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((n) => (
-                <a 
-                  key={n.id} 
-                  href={n.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block bg-[#1a1a1f] border-l-2 border-[#ff0000] border-y border-r border-[#2d2d30]/50 overflow-hidden hover:bg-[#25252a] hover:border-r-transparent transition-colors group"
-                >
-                  {n.imageUrl && (
-                    <div className="h-24 w-full overflow-hidden relative">
-                       <div className="absolute inset-0 bg-[#ff0000]/20 mix-blend-overlay z-10"></div>
-                       <img src={n.imageUrl} alt="News Preview" className="w-full h-full object-cover grayscale mix-blend-luminosity opacity-80 group-hover:scale-105 transition-transform duration-700" />
+              {filteredNews.filter(n => n.category === 'RAW_DATA').sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((n) => {
+                const linkable = isValidSourceUrl(n.url);
+                const Inner = (
+                  <>
+                    {n.imageUrl && (
+                      <div className="h-24 w-full overflow-hidden relative">
+                         <div className="absolute inset-0 bg-[#ff0000]/20 mix-blend-overlay z-10"></div>
+                         <img src={n.imageUrl} alt="" className="w-full h-full object-cover grayscale mix-blend-luminosity opacity-80 group-hover:scale-105 transition-transform duration-700" />
+                      </div>
+                    )}
+                    <div className="p-3">
+                      <p className="text-[10px] font-bold text-[#ff0000] mb-1 line-clamp-2 uppercase">{n.title}</p>
+                      <p className="text-[11px] text-[#e0e0e0] leading-tight mb-2 line-clamp-3">"{n.summary}"</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[9px] text-[#808080] font-mono uppercase">{new Date(n.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} GMT // {n.source}</span>
+                        {linkable && <span className="text-[9px] text-[#ff0000] font-mono">OPEN ↗</span>}
+                      </div>
                     </div>
-                  )}
-                  <div className="p-3">
-                    <p className="text-[10px] font-bold text-[#ff0000] mb-1 line-clamp-2 uppercase">{n.title}</p>
-                    <p className="text-[11px] text-[#e0e0e0] leading-tight mb-2 line-clamp-3">"{n.summary}"</p>
-                    <span className="text-[9px] text-[#808080] font-mono block uppercase">{new Date(n.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} GMT // {n.source}</span>
-                  </div>
-                </a>
-              ))}
+                  </>
+                );
+                return linkable ? (
+                  <a
+                    key={n.id}
+                    href={n.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={`Open raw data source: ${n.title}`}
+                    className="block bg-[#1a1a1f] border-l-2 border-[#ff0000] border-y border-r border-[#2d2d30]/50 overflow-hidden hover:bg-[#25252a] hover:border-r-transparent transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff0000]"
+                  >{Inner}</a>
+                ) : (
+                  <div key={n.id} className="block bg-[#1a1a1f] border-l-2 border-[#ff0000] border-y border-r border-[#2d2d30]/50 overflow-hidden opacity-90 group">{Inner}</div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -250,11 +290,13 @@ export default function Sidebar() {
 
       {/* Footer Controls */}
       <div className="p-4 border-t border-[#2d2d30] bg-[#0f0f12] flex flex-col gap-2 mt-auto">
-        <button 
+        <button
+          type="button"
           onClick={simulateNewCase}
-          className="w-full py-2 bg-[#1a1a1f] hover:bg-[#25252a] text-[#808080] hover:text-white text-[10px] font-mono rounded-sm border text-center border-[#2d2d30] uppercase tracking-widest transition-colors flex justify-center items-center gap-2"
+          aria-label="Test audio alert pipeline"
+          className="w-full py-2 bg-[#1a1a1f] hover:bg-[#25252a] text-[#808080] hover:text-white text-[10px] font-mono rounded-sm border text-center border-[#2d2d30] uppercase tracking-widest transition-colors flex justify-center items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4d4d]"
         >
-          <div className="w-1.5 h-1.5 bg-[#8b0000] border border-[#ff4d4d] rounded-full"></div> TEST AUDIO PIPELINE
+          <div className="w-1.5 h-1.5 bg-[#8b0000] border border-[#ff4d4d] rounded-full" aria-hidden="true"></div> TEST AUDIO PIPELINE
         </button>
         <div className="flex items-center justify-center gap-2 mt-2">
           <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
